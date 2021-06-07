@@ -19,7 +19,7 @@ typedef struct {
 typedef struct {
     int n, m; //numero de pontos internos na malha
     double Lx, Ly; //intervalo
-    double (* u1)(double), (* u2)(double), (* u3)(double), (* u4)(double); //condições de contorno
+    double (* u1)(double), (* u2)(double), (* u3)(double), (* u4)(double); //(0,y) (lx, y) (x, 0) (x, ly)
     double (* func)(double, double);
 }Edo2;
 
@@ -82,7 +82,7 @@ void gaussSeidel(Edo *edoeq, double *Y)
 
 }
 
-void gaussSeidel2(Edo2 *edoeq, double *Y)
+void gaussSeidel2(Edo2 *edoeq, double U[100][100])
 {
     int n = edoeq->n, m = edoeq->m, i, k, j;
     double hx, hy, xi, bi, yi, d, di, ds, di2, ds2;
@@ -99,14 +99,25 @@ void gaussSeidel2(Edo2 *edoeq, double *Y)
                 yi = (j+1)*hy;//valor yi da malha
 
                 bi = hx*hx*hy*hy*edoeq->func(xi, yi);//termo indep.
-                di = 1 - h*edoeq->p(xi)/2.0;//diagonal inferior
-                d = -2 + h*h * edoeq->q(xi);//diagonal principal
-                ds = 1 + h*edoeq->p(xi)/2.0;//diagonal superior
-                if(i==0)          bi -= ds*Y[i+1] + edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0);
-                else if(i == n-1) bi -= di*Y[i-1] + edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);//Sinal - ou + ?
-                else              bi -= ds*Y[i+1] + di*Y[i-1];
+                di = hy*hy;
+                di2 = hx*hx;
+                d = -2.0*(hx*hx + hy*hy);
+                ds = hy*hy;
+                ds2 = hx*hx;
 
-                Y[i] = bi/d; //calcula incognita
+                if(j == 0 && i == 0) bi -= di2*edoeq->u3(xi) + di*edoeq->u1(yi) + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if(j == 0 && i != n-1) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if(j == 0 && i == n-1) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*edoeq->u2(yi) + ds2*U[i][j+1];
+                
+                else if(j != n-1 && i == 0) bi -= di2*U[i][j-1] + di*edoeq->u1(yi) + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if(j != n-1 && i != n-1 ) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if(j != n-1 && i == n-1)  bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yi) + ds2*U[i][j+1];
+
+                else if(j == n-1 && i == 0) bi -= di2*U[i][j-1] + di*edoeq->u1(yi) + ds*U[i+1][j] + ds2*edoeq->u4(xi);
+                else if(j == n-1 && i != n-1) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] + ds2*edoeq->u4(xi);
+                else bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yi) + ds2*edoeq->u4(xi);
+
+                U[i][j] = bi/d; //calcula incognita
 
             }
         
@@ -116,9 +127,19 @@ void gaussSeidel2(Edo2 *edoeq, double *Y)
     }
 
 }
+/*Valores especiais
+0 0
+0 x
+0 n-1
 
+x 0
+x x 
+x n-1
 
-
+n-1 0
+n-1 x 
+n-1 n-1
+*/
 
 int main(){
 
