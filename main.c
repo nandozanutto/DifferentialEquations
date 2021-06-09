@@ -37,31 +37,31 @@ double getR(double x){//Eq a.
 }
 
 double func(double x, double y){//Eq a.
-    //6x - 0.5x²
+    //sin²(x)
+    return sin(x)*sin(x);
+}
+
+double u1(double var){
+    return 20.0;
+}
+
+double u2(double var){
+    return 45.0;
+}
+
+double u3(double var){
     return 0;
 }
 
-double u1(double x, double y){
-    return 0;
-}
-
-double u2(double x, double y){
-    return 0;
-}
-
-double u3(double x, double y){
-    return 0;
-}
-
-double u4(double x, double y){
-    return 0;
+double u4(double var){
+    return 100;
 }
 
 
 void gaussSeidel(Edo *edoeq, double *Y)
 {
     int n = edoeq->n, k, i;
-    double h, xi, bi, yi, d, di, ds;
+    double h, xi, bi, yj, d, di, ds;
 
     h = (edoeq->b - edoeq->a)/(n+1); //Largura do passo da malha
     for(k=0; k<50; ++k){
@@ -82,42 +82,54 @@ void gaussSeidel(Edo *edoeq, double *Y)
 
 }
 
-void gaussSeidel2(Edo2 *edoeq, double U[100][100])
+// double valorContorno(int i, int j, int n, int m, double value){
+//     if()
+
+// }
+
+void gaussSeidel2(Edo2 *edoeq)
 {
     int n = edoeq->n, m = edoeq->m, i, k, j;
-    double hx, hy, xi, bi, yi, d, di, ds, di2, ds2;
+    double U[n][m];
+    for(int j=0; j<edoeq->m; j++)
+        for(int i=0; i<edoeq->n; i++)
+            U[i][j] = 0;
+
+
+    double hx, hy, xi, bi, yj, d, di, ds, di2, ds2;
 
     hx = edoeq->Lx/(n+1);
     hy = edoeq->Ly/(m+1);//largura do passo
     
-    for(k=0; k<50; ++k){
+    for(k=0; k<24; ++k){
         
         for(j=0; j<m; j++){
             
-            for(i=0; i<n; ++i){
+            for(i=0; i<n; i++){
                 xi = (i+1)*hx;//valor xi da malha
-                yi = (j+1)*hy;//valor yi da malha
+                yj = (j+1)*hy;//valor yj da malha
 
-                bi = hx*hx*hy*hy*edoeq->func(xi, yi);//termo indep.
+                bi = hx*hx*hy*hy*edoeq->func(xi, yj);//termo indep.
                 di = hy*hy;
                 di2 = hx*hx;
-                d = -2.0*(hx*hx + hy*hy);
+                d = -2.0*(hx*hx + hy*hy) - 1;//?????
                 ds = hy*hy;
                 ds2 = hx*hx;
 
-                if(j == 0 && i == 0) bi -= di2*edoeq->u3(xi) + di*edoeq->u1(yi) + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if(j == 0 && i != n-1) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if(j == 0 && i == n-1) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*edoeq->u2(yi) + ds2*U[i][j+1];
+
+                if((i == 0) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*edoeq->u1(yj) + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if((i == 0) && (j != m-1)) bi -= di2*U[i][j-1] + di*edoeq->u1(yj) + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if((i == 0) && (j == m-1)) bi -= di2*U[i][j-1] + di*edoeq->u1(yj) + ds*U[i+1][j] + ds2*edoeq->u4(xi);
                 
-                else if(j != n-1 && i == 0) bi -= di2*U[i][j-1] + di*edoeq->u1(yi) + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if(j != n-1 && i != n-1 ) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if(j != n-1 && i == n-1)  bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yi) + ds2*U[i][j+1];
-
-                else if(j == n-1 && i == 0) bi -= di2*U[i][j-1] + di*edoeq->u1(yi) + ds*U[i+1][j] + ds2*edoeq->u4(xi);
-                else if(j == n-1 && i != n-1) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] + ds2*edoeq->u4(xi);
-                else bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yi) + ds2*edoeq->u4(xi);
-
+                else if((i == n-1) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*edoeq->u2(yj) + ds2*U[i][j+1];
+                else if((i == n-1) && (j != m-1)) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yj) + ds2*U[i][j+1];
+                else if((i == n-1) && (j == m-1)) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yj) + ds2*edoeq->u4(xi);
+                
+                else if((i != n-1) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if((i != n-1) && (j != m-1)) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
+                else if((i != n-1) && (j == m-1))  bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] +  ds2*edoeq->u4(xi); 
                 U[i][j] = bi/d; //calcula incognita
+                
 
             }
         
@@ -126,6 +138,12 @@ void gaussSeidel2(Edo2 *edoeq, double U[100][100])
     
     }
 
+    for(int j=0; j<edoeq->m; j++){
+        for(int i=0; i<edoeq->n; i++)
+            printf("%f ", U[i][j]);
+        printf("\n");
+    }
+    printf("*********************");
 }
 /*Valores especiais
 0 0
@@ -148,7 +166,7 @@ int main(){
     // //y(0)=0 y(12) = 0
     // edoeq->a = 0;
     // edoeq->b = 12;
-    // edoeq->n = 5;
+    // edoeq->n = 10;
     // edoeq->ya = 0;
     // edoeq->yb = 0;
     // edoeq->p = getP;
@@ -162,16 +180,16 @@ int main(){
     
     //****************************************************
     Edo2 *edoeq = (Edo2 *)malloc(sizeof(Edo2));
-    edoeq->Lx = M_PI;
-    edoeq->Ly = M_PI_2;
+    edoeq->Lx = 6;
+    edoeq->Ly = 8;
     edoeq->n = 5;
     edoeq->m = 3;
     edoeq->func = func;
     edoeq->u1 = u1;
     edoeq->u2 = u2;
     edoeq->u3 = u3;
-    edoeq->u4 = u4;
-
+    edoeq->u4 = u4; 
+    gaussSeidel2(edoeq);
 
 
 }
