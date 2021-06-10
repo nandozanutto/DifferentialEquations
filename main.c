@@ -81,19 +81,44 @@ void gaussSeidel(Edo *edoeq, double *Y)
     }
 
 }
+double maxError(int n, int m, double newU[n][m], double U[n][m]){
+  double max = fabs(newU[0][0] - U[0][0]);
+  
+    for(int j=0; j<m; j++){  
+        for(int i=1; i<n; i++){
+            if(max < fabs(newU[i][j] - U[i][j]))
+                max = fabs(newU[i][j] - U[i][j]);
+        }
+    }
 
-// double valorContorno(int i, int j, int n, int m, double value){
-//     if()
+  return max;
+}
+
+// double normaL2Residuo()
+// {
+//   double norma=0;
+//   double *aux;//A*X
+//   aux = (real_t *)malloc(SL->n*sizeof(real_t));
+//   multiMatrix(SL, x, aux);
+//   for(int i=0; i<SL->n; i++)
+//     res[i] = SL->b[i] - aux[i];
+//   for(int i=0; i<SL->n; i++)
+//     norma += res[i]*res[i];
+//   norma = sqrt(norma);
+//   return norma;
 
 // }
 
-void gaussSeidel2(Edo2 *edoeq)
+
+int gaussSeidel2(Edo2 *edoeq)
 {
-    int n = edoeq->n, m = edoeq->m, i, k, j;
-    double U[n][m];
-    for(int j=0; j<edoeq->m; j++)
-        for(int i=0; i<edoeq->n; i++)
+    int n = edoeq->n, m = edoeq->m, i, k, j, num=0;
+    double U[n][m], newU[n][m];
+    for(int j=0; j<edoeq->m; j++)//zerando a matriz
+        for(int i=0; i<edoeq->n; i++){
             U[i][j] = 0;
+            newU[i][j] = 0;
+        }
 
 
     double hx, hy, xi, bi, yj, d, di, ds, di2, ds2;
@@ -101,7 +126,7 @@ void gaussSeidel2(Edo2 *edoeq)
     hx = edoeq->Lx/(n+1);
     hy = edoeq->Ly/(m+1);//largura do passo
     
-    for(k=0; k<24; ++k){
+    for(k=0; k<50; ++k){
         
         for(j=0; j<m; j++){
             
@@ -117,33 +142,45 @@ void gaussSeidel2(Edo2 *edoeq)
                 ds2 = hx*hx;
 
 
-                if((i == 0) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*edoeq->u1(yj) + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if((i == 0) && (j != m-1)) bi -= di2*U[i][j-1] + di*edoeq->u1(yj) + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if((i == 0) && (j == m-1)) bi -= di2*U[i][j-1] + di*edoeq->u1(yj) + ds*U[i+1][j] + ds2*edoeq->u4(xi);
+                if((i == 0) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*edoeq->u1(yj) + ds*newU[i+1][j] + ds2*newU[i][j+1];
+                else if((i == 0) && (j != m-1)) bi -= di2*newU[i][j-1] + di*edoeq->u1(yj) + ds*newU[i+1][j] + ds2*newU[i][j+1];
+                else if((i == 0) && (j == m-1)) bi -= di2*newU[i][j-1] + di*edoeq->u1(yj) + ds*newU[i+1][j] + ds2*edoeq->u4(xi);
                 
-                else if((i == n-1) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*edoeq->u2(yj) + ds2*U[i][j+1];
-                else if((i == n-1) && (j != m-1)) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yj) + ds2*U[i][j+1];
-                else if((i == n-1) && (j == m-1)) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*edoeq->u2(yj) + ds2*edoeq->u4(xi);
+                else if((i == n-1) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*newU[i-1][j] + ds*edoeq->u2(yj) + ds2*newU[i][j+1];
+                else if((i == n-1) && (j != m-1)) bi -= di2*newU[i][j-1] + di*newU[i-1][j] + ds*edoeq->u2(yj) + ds2*newU[i][j+1];
+                else if((i == n-1) && (j == m-1)) bi -= di2*newU[i][j-1] + di*newU[i-1][j] + ds*edoeq->u2(yj) + ds2*edoeq->u4(xi);
                 
-                else if((i != n-1) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if((i != n-1) && (j != m-1)) bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] + ds2*U[i][j+1];
-                else if((i != n-1) && (j == m-1))  bi -= di2*U[i][j-1] + di*U[i-1][j] + ds*U[i+1][j] +  ds2*edoeq->u4(xi); 
-                U[i][j] = bi/d; //calcula incognita
+                else if((i != n-1) && (j == 0)) bi -= di2*edoeq->u3(xi) + di*newU[i-1][j] + ds*newU[i+1][j] + ds2*newU[i][j+1];
+                else if((i != n-1) && (j != m-1)) bi -= di2*newU[i][j-1] + di*newU[i-1][j] + ds*newU[i+1][j] + ds2*newU[i][j+1];
+                else if((i != n-1) && (j == m-1))  bi -= di2*newU[i][j-1] + di*newU[i-1][j] + ds*newU[i+1][j] +  ds2*edoeq->u4(xi); 
+                newU[i][j] = bi/d; //calcula incognita
                 
-
             }
-        
-        
         }
+        num++;
+        if((maxError(edoeq->n, edoeq->m, newU, U) <= 0.0001)){//critério de parada
+            for(int j=0; j<edoeq->m; j++)//copiando matriz
+                for(int i=0; i<edoeq->n; i++)
+                    U[i][j] = newU[i][j];
+            
+            for(int j=0; j<edoeq->m; j++){//imprimindo
+                for(int i=0; i<edoeq->n; i++)
+                    printf("%.7g ", U[i][j]);
+                printf("\n");
+            }
+            printf("*********************");
+            return num;
+        }
+
+        
+        for(int j=0; j<edoeq->m; j++)//copiando matriz
+            for(int i=0; i<edoeq->n; i++)
+                U[i][j] = newU[i][j];
+            
     
     }
 
-    for(int j=0; j<edoeq->m; j++){
-        for(int i=0; i<edoeq->n; i++)
-            printf("%f ", U[i][j]);
-        printf("\n");
-    }
-    printf("*********************");
+
 }
 /*Valores especiais
 0 0
@@ -189,7 +226,7 @@ int main(){
     edoeq->u2 = u2;
     edoeq->u3 = u3;
     edoeq->u4 = u4; 
-    gaussSeidel2(edoeq);
+    printf("%d",gaussSeidel2(edoeq));
 
 
 }
