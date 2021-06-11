@@ -1,71 +1,97 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sys/time.h>
+
+/*  Retorna tempo em milisegundos
+    Forma de uso:
+ 
+    real_t tempo;
+    tempo = timestamp();
+    <trecho de programa do qual se deseja medir tempo>
+    tempo = timestamp() - tempo;
+*/
+
+typedef float real_t;
+
+real_t timestamp(void)
+{
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return((real_t)(tp.tv_sec*1000.0 + tp.tv_usec/1000.0));
+}
 
 
 //Matriz tridiagonal
 typedef struct {
     int n; //numero de pontos internos na malha
-    double a, b; //intervalo
-    double ya, yb;//condições de contorno
-    double (* p)(double), (* q)(double, int), (* r)(double, int);
+    real_t a, b; //intervalo
+    real_t ya, yb;//condições de contorno
+    real_t (* p)(real_t), (* q)(real_t, int), (* r)(real_t, int);
 }Edo;
 
 typedef struct {
     int n, m; //numero de pontos internos na malha
-    double Lx, Ly; //intervalo
-    double (* u1)(double, int), (* u2)(double, int), (* u3)(double, int), (* u4)(double, int); //(0,y) (lx, y) (x, 0) (x, ly)
-    double (* func)(double, double, int);
+    real_t Lx, Ly; //intervalo
+    real_t (* u1)(real_t, int), (* u2)(real_t, int), (* u3)(real_t, int), (* u4)(real_t, int); //(0,y) (lx, y) (x, 0) (x, ly)
+    real_t (* func)(real_t, real_t, int);
 }Edo2;
 
-double getP(double x){
+real_t getP(real_t x){
     return 0;
 }
 
-double getQ(double x, int isFirst){
+real_t getQ(real_t x, int isFirst){
     if(isFirst) return 0;
     else return 1;
 }
 
-double getR(double x, int isFirst){//Eq a.
+real_t getR(real_t x, int isFirst){//Eq a.
     //6x - 0.5x²
     if(isFirst) return 6*x - 0.5*x*x;
     else return 0;
 }
 
-double func(double x, double y, int isFirst){//Eq a.
+real_t func(real_t x, real_t y, int isFirst){//Eq a.
     //sin²(x)
     if(isFirst) return sin(x)*sin(x);
     else return -cos(x+y) -cos(x-y);
 }
 
-double u1(double var, int isFirst){
+real_t u1(real_t var, int isFirst){
     if(isFirst) return 20.0;
     else return cos(var);
 }
 
-double u2(double var, int isFirst){
+real_t u2(real_t var, int isFirst){
     if(isFirst) return 45.0;
     else return -cos(var);
 }
 
-double u3(double var, int isFirst){
+real_t u3(real_t var, int isFirst){
     if(isFirst) return 0;
     else return cos(var);
 }
 
-double u4(double var, int isFirst){
+real_t u4(real_t var, int isFirst){
     if(isFirst) return 100;
     else return 0;
 }
 
+void printV(real_t *v, int n){
+    for(int i=0; i<n; i++)
+        printf("%.7g ", v[i]);
+    printf("\n");
+}
 
-double gaussSeidel(Edo *edoeq, double *Y, int isFirst)
+real_t gaussSeidel(Edo *edoeq, real_t *Y, int isFirst)
 {
+    real_t tTotal = timestamp();
+    printf("%f", tTotal);
     int n = edoeq->n, k, i;
-    double h, xi, bi, yj, d, di, ds;
-    double r[n], norma=0;
-    double biV[n], diV[n], dV[n], dsV[n];
+    real_t h, xi, bi, yj, d, di, ds;
+    real_t r[n], norma=0;
+    real_t biV[n], diV[n], dV[n], dsV[n];
 
     h = (edoeq->b - edoeq->a)/(n+1); //Largura do passo da malha
     for(k=0; k<50; ++k){
@@ -87,7 +113,7 @@ double gaussSeidel(Edo *edoeq, double *Y, int isFirst)
         }
 
     }
-
+    tTotal = timestamp() - tTotal;
     for(int i=0; i<n; i++){//fazendo residuo
         if(i==0) r[i] = biV[i] - (dsV[i]*Y[i+1] + dV[i]*Y[i] + edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0));
         else if(i == n-1)  r[i] = biV[i] - (diV[i]*Y[i-1] + dV[i]*Y[i] + edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0));
@@ -97,21 +123,33 @@ double gaussSeidel(Edo *edoeq, double *Y, int isFirst)
     for(int i=0; i<n; i++)//fazendo norma
         norma += r[i]*r[i];
     norma = sqrt(norma);
-    printf("norma = %.7g\n", norma);
+
+
+    if(isFirst) printf("***** item (a): n = %d, H = %.7g\nSL:\n", n, h);
+    else printf("***** item (b): n = %d, H = %.7g\nSL:\n", n, h);
+    printV(dsV, n);
+    printV(dV, n);
+    printV(diV, n);
+    printV(biV, n);
+    printf("Y: ");
+    printV(Y, n);
+    printf("Norma L2: %.7g, Tempo: %f ms,\n", norma, tTotal);
+
     return norma;
 
 }
 
 int gaussSeidel2(Edo2 *edoeq, int isFirst)
 {
+    real_t tTotal = timestamp();
     int n = edoeq->n, m = edoeq->m, i, k, j;
-    double U[n][m], r[n][m], norma=0;
+    real_t U[n][m], r[n][m], norma=0;
     for(int j=0; j<edoeq->m; j++)//zerando a matriz
         for(int i=0; i<edoeq->n; i++)
             U[i][j] = 0;
 
 
-    double hx, hy, xi, bi, yj, d, di, ds, di2, ds2, biV[n][m];
+    real_t hx, hy, xi, bi, yj, d, di, ds, di2, ds2, biV[n][m];
 
     hx = edoeq->Lx/(n+1);
     hy = edoeq->Ly/(m+1);//largura do passo
@@ -181,6 +219,7 @@ int gaussSeidel2(Edo2 *edoeq, int isFirst)
         printf("\n");
     }
     printf("norma = %.7g", norma);
+    tTotal = timestamp() - tTotal;
 }
 
 
@@ -197,11 +236,9 @@ int main(){
     edoeq->p = getP;
     edoeq->q = getQ;
     edoeq->r = getR;
-    double *Y;
-    Y = (double *)calloc((edoeq->n), sizeof(double));
+    real_t *Y;
+    Y = (real_t *)calloc((edoeq->n), sizeof(real_t));
     gaussSeidel(edoeq, Y, 1);
-    for(int i=0; i<edoeq->n; i++)
-        printf("%.7g ", Y[i]);
     
     printf("\n******************************************\n");
     //************************************************
@@ -217,8 +254,8 @@ int main(){
     // edoeq->p = getP;
     // edoeq->q = getQ;
     // edoeq->r = getR;
-    // double *Y;
-    // Y = (double *)calloc((edoeq->n), sizeof(double));
+    // real_t *Y;
+    // Y = (real_t *)calloc((edoeq->n), sizeof(real_t));
     // gaussSeidel(edoeq, Y, 0);
     // for(int i=0; i<edoeq->n; i++)
     //     printf("%.7g ", Y[i]);
