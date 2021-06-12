@@ -14,14 +14,6 @@
 
 typedef float real_t;
 
-real_t timestamp(void)
-{
-  struct timeval tp;
-  gettimeofday(&tp, NULL);
-  return((real_t)(tp.tv_sec*1000.0 + tp.tv_usec/1000.0));
-}
-
-
 //Matriz tridiagonal
 typedef struct {
     int n; //numero de pontos internos na malha
@@ -86,8 +78,6 @@ void printV(real_t *v, int n){
 
 real_t gaussSeidel(Edo *edoeq, real_t *Y, int isFirst)
 {
-    real_t tTotal = timestamp();
-    printf("%f", tTotal);
     int n = edoeq->n, k, i;
     real_t h, xi, bi, yj, d, di, ds;
     real_t r[n], norma=0;
@@ -113,7 +103,6 @@ real_t gaussSeidel(Edo *edoeq, real_t *Y, int isFirst)
         }
 
     }
-    tTotal = timestamp() - tTotal;
     for(int i=0; i<n; i++){//fazendo residuo
         if(i==0) r[i] = biV[i] - (dsV[i]*Y[i+1] + dV[i]*Y[i] + edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0));
         else if(i == n-1)  r[i] = biV[i] - (diV[i]*Y[i-1] + dV[i]*Y[i] + edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0));
@@ -125,15 +114,15 @@ real_t gaussSeidel(Edo *edoeq, real_t *Y, int isFirst)
     norma = sqrt(norma);
 
 
-    if(isFirst) printf("***** item (a): n = %d, H = %.7g\nSL:\n", n, h);
-    else printf("***** item (b): n = %d, H = %.7g\nSL:\n", n, h);
+    if(isFirst) printf("\n***** item (a): n = %d, H = %.7g\nSL:\n", n, h);
+    else printf("\n***** item (c): n = %d, H = %.7g\nSL:\n", n, h);
     printV(dsV, n);
     printV(dV, n);
     printV(diV, n);
     printV(biV, n);
     printf("Y: ");
     printV(Y, n);
-    printf("Norma L2: %.7g, Tempo: %f ms,\n", norma, tTotal);
+    printf("Norma L2: %.7g\n", norma);
 
     return norma;
 
@@ -141,7 +130,6 @@ real_t gaussSeidel(Edo *edoeq, real_t *Y, int isFirst)
 
 int gaussSeidel2(Edo2 *edoeq, int isFirst)
 {
-    real_t tTotal = timestamp();
     int n = edoeq->n, m = edoeq->m, i, k, j;
     real_t U[n][m], r[n][m], norma=0;
     for(int j=0; j<edoeq->m; j++)//zerando a matriz
@@ -213,13 +201,39 @@ int gaussSeidel2(Edo2 *edoeq, int isFirst)
         for(i=0; i<n; i++)
             norma+=r[i][j]*r[i][j];
     norma = sqrt(norma);
-    for(int j=0; j<edoeq->m; j++){
+    if(isFirst) printf("\n***** item (b): L = %.7g, W = %.7g, n = %d, m = %d, Hx = %.7g , Hy = %.7g\nSL:\n", edoeq->Lx, edoeq->Ly, edoeq->n, edoeq->m, hx, hy);
+    else printf("\n***** item (d): Lx = %.7g, Ly = %f, n = %d, m = %d, Hx = %f , Hy = %f\nSL:\n", edoeq->Lx, edoeq->Ly, edoeq->n, edoeq->m, hx, hy);
+    
+    for(int i=0; i<edoeq->m*edoeq->n - 2; i++)
+        printf("%.7g ", ds2);
+    printf("\n");
+    
+    for(int i=0; i<edoeq->m*edoeq->n - 1; i++)
+        printf("%.7g ", ds);
+    printf("\n");
+    
+    for(int i=0; i<edoeq->m*edoeq->n; i++)
+        printf("%.7g ", d);
+    printf("\n");
+
+    for(int i=0; i<edoeq->m*edoeq->n-1; i++)
+        printf("%.7g ", di);
+    printf("\n");
+
+    for(int i=0; i<edoeq->m*edoeq->n-2; i++)
+        printf("%.7g ", di2);
+    printf("\n");
+
+    for(int j=0; j<edoeq->m; j++)
+        for(int i=0; i<edoeq->n; i++)
+            printf("%.7g ", biV[i][j]);
+    printf("\n\nT: ");
+
+    for(int j=0; j<edoeq->m; j++)
         for(int i=0; i<edoeq->n; i++)
             printf("%.7g ", U[i][j]);
-        printf("\n");
-    }
-    printf("norma = %.7g", norma);
-    tTotal = timestamp() - tTotal;
+
+    printf("\nNorma L2: %.7g\n", norma);
 }
 
 
@@ -230,7 +244,7 @@ int main(){
     //y(0)=0 y(12) = 0
     edoeq->a = 0;
     edoeq->b = 12;
-    edoeq->n = 10;
+    edoeq->n = 5;
     edoeq->ya = 0;
     edoeq->yb = 0;
     edoeq->p = getP;
@@ -239,26 +253,28 @@ int main(){
     real_t *Y;
     Y = (real_t *)calloc((edoeq->n), sizeof(real_t));
     gaussSeidel(edoeq, Y, 1);
-    
-    printf("\n******************************************\n");
+    edoeq->n = 10;
+    for(int i=0; i<edoeq->n; i++)
+        Y[i] = 0;
+    gaussSeidel(edoeq, Y, 1);
     //************************************************
-    
-    // Edo *edoeq = (Edo *)malloc(sizeof(Edo));
-    // //y'' + y = 0
-    // //y(0)=0 y(12) = 0
-    // edoeq->a = 0;
-    // edoeq->b = 1;
-    // edoeq->n = 10;
-    // edoeq->ya = 0;
-    // edoeq->yb = 1;
-    // edoeq->p = getP;
-    // edoeq->q = getQ;
-    // edoeq->r = getR;
-    // real_t *Y;
-    // Y = (real_t *)calloc((edoeq->n), sizeof(real_t));
-    // gaussSeidel(edoeq, Y, 0);
-    // for(int i=0; i<edoeq->n; i++)
-    //     printf("%.7g ", Y[i]);
+    //y'' + y = 0
+    //y(0)=0 y(12) = 0
+    edoeq->a = 0;
+    edoeq->b = 1;
+    edoeq->n = 5;
+    edoeq->ya = 0;
+    edoeq->yb = 1;
+    edoeq->p = getP;
+    edoeq->q = getQ;
+    edoeq->r = getR;
+    for(int i=0; i<edoeq->n; i++)
+        Y[i] = 0;
+    gaussSeidel(edoeq, Y, 0);
+    edoeq->n = 10;
+    for(int i=0; i<edoeq->n; i++)
+        Y[i] = 0;
+    gaussSeidel(edoeq, Y, 0);
     
     //****************************************************
     Edo2 *edoeq2 = (Edo2 *)malloc(sizeof(Edo2));
@@ -271,20 +287,22 @@ int main(){
     edoeq2->u2 = u2;
     edoeq2->u3 = u3;
     edoeq2->u4 = u4; 
-    printf("%d",gaussSeidel2(edoeq2, 1));
+    gaussSeidel2(edoeq2, 1);
+    edoeq2->n = 10;
+    gaussSeidel2(edoeq2, 1);
 
     // ****************************************************
-    // Edo2 *edoeq = (Edo2 *)malloc(sizeof(Edo2));
-    // edoeq->Lx = M_PI;
-    // edoeq->Ly = M_PI_2;
-    // edoeq->n = 5;
-    // edoeq->m = 3;
-    // edoeq->func = func;
-    // edoeq->u1 = u1;
-    // edoeq->u2 = u2;
-    // edoeq->u3 = u3;
-    // edoeq->u4 = u4; 
-    // printf("%d",gaussSeidel2(edoeq, 0));
-
+    edoeq2->Lx = M_PI;
+    edoeq2->Ly = M_PI_2;
+    edoeq2->n = 5;
+    edoeq2->m = 3;
+    edoeq2->func = func;
+    edoeq2->u1 = u1;
+    edoeq2->u2 = u2;
+    edoeq2->u3 = u3;
+    edoeq2->u4 = u4; 
+    gaussSeidel2(edoeq2, 0);
+    edoeq2->n = 10;
+    gaussSeidel2(edoeq2, 0);
 
 }
