@@ -3,12 +3,15 @@
     LFLAGS = -lm
 
       PROG = main 
-
+      OBJS = main.o
 
 .PHONY: limpa faxina clean purge all
 
-%.o: %.c %.h utils.h
-	$(CC) -c $(CFLAGS) 
+%.o: %.c %.h 
+	$(CC) -c $(CFLAGS) $<
+
+$(PROG) : % :  $(OBJS) %.o
+	$(CC) -o $@ $^ $(LFLAGS)
 
 limpa clean:
 	@rm -f *~ *.bak
